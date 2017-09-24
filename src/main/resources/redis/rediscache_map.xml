@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper>
+
+	<map id="user" type="com.ntd.entity.User" >
+		<hashs field="userId" property="userId"/>
+		<hashs field="name" property="name"/>
+		<hashs field="phone" property="phone"/>
+		<hashs field="age" property="age"/>
+	</map>
+
+</mapper>

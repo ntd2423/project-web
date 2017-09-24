@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="gift">
+
+    <resultMap type="com.ntd.entity.GiftRank" id="giftRankMap">
+        <result column="rank" property="rank"/>
+        <result column="user_id" property="userId"/>
+        <result column="quantity" property="quantity"/>
+        <result column="cost" property="cost"/>
+    </resultMap>
+
+    <select id="select_current_rank_by_userId" resultMap="giftRankMap" parameterType="Map">
+        SELECT a.* FROM rank_gift_star_gift_receive a
+        WHERE a.create_time &gt;= #{start} and a.create_time &lt; #{end}
+        <if test="userId != null">
+            and user_id = #{userId}
+        </if>
+        ORDER BY a.cost DESC
+        limit #{limit}
+    </select>
+
+    <select id="select_send_max" resultMap="giftRankMap" parameterType="Map">
+        SELECT MAX(cost) cost,quantity,user_id FROM rank_gift_star_gift_send
+        WHERE create_time &gt;= #{start} and create_time &lt; #{end} and  gift_id = #{giftId} and rank =1
+    </select>
+
+</mapper>

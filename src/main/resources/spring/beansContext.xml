@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:p="http://www.springframework.org/schema/p" xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:mvc="http://www.springframework.org/schema/mvc" xmlns:task="http://www.springframework.org/schema/task"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+            http://www.springframework.org/schema/beans/spring-beans.xsd
+            http://www.springframework.org/schema/aop
+            http://www.springframework.org/schema/aop/spring-aop.xsd
+            http://www.springframework.org/schema/tx
+            http://www.springframework.org/schema/tx/spring-tx-3.2.xsd
+            http://www.springframework.org/schema/context
+            http://www.springframework.org/schema/context/spring-context-3.2.xsd
+            http://www.springframework.org/schema/mvc
+            http://www.springframework.org/schema/mvc/spring-mvc-3.2.xsd
+            http://www.springframework.org/schema/task
+            http://www.springframework.org/schema/task/spring-task-3.2.xsd">
+
+    <!-- 自定义其它bean -->
+    <bean id="setting" class="com.ntd.common.Setting">
+        <property name="debug" value="${debug}"/>
+        <property name="num" value="${num}"/>
+    </bean>
+
+    <!-- 定义SpringContextUtil，可在程序中获取spring上下文 -->
+    <bean id="SpringContextUtil" class="com.ntd.utils.SpringContextUtil"/>
+
+    <!-- 统一异常处理    -->
+    <bean id="handlerExceptionResolver" class="com.ntd.exception.WebExceptionResolver"></bean>
+
+    <!-- redis模板配置 -->
+    <bean id="redisHashsMapper" class="com.ntd.redis.RedisHashsMapper">
+        <property name="configMapperXml" value="classpath:redis/rediscache_map.xml"/>
+    </bean>
+
+    <!-- trigger设计 -->
+    <bean id="eventTriggerSetting" class="com.ntd.trigger.CommonEventTriggerSetting"/>
+    <bean id="eventDispatcher" class="com.ntd.trigger.Dispatcher">
+        <property name="eventTriggerSetting" ref="eventTriggerSetting"/>
+    </bean>
+
+</beans>

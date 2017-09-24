@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:p="http://www.springframework.org/schema/p" xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:mvc="http://www.springframework.org/schema/mvc" xmlns:task="http://www.springframework.org/schema/task"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+            http://www.springframework.org/schema/beans/spring-beans.xsd
+            http://www.springframework.org/schema/aop
+            http://www.springframework.org/schema/aop/spring-aop.xsd
+            http://www.springframework.org/schema/tx
+            http://www.springframework.org/schema/tx/spring-tx-3.2.xsd
+            http://www.springframework.org/schema/context
+            http://www.springframework.org/schema/context/spring-context-3.2.xsd
+            http://www.springframework.org/schema/mvc
+            http://www.springframework.org/schema/mvc/spring-mvc-3.2.xsd
+            http://www.springframework.org/schema/task
+            http://www.springframework.org/schema/task/spring-task-3.2.xsd">
+    <!-- 引入配置文件 -->
+    <bean id="propertyConfigurer" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="locations">
+            <list>
+                <value>classpath:properties/*.properties</value>
+            </list>
+        </property>
+    </bean>
+
+    <!-- 自动扫描注解的bean -->
+    <context:component-scan base-package="com.ntd" />
+
+    <!-- 配置主从数据源 -->
+    <bean id="dataSource" class="com.ntd.aop.annotation.db.MyRoutingDataSource">
+        <property name="targetDataSources">
+            <map key-type="java.lang.String">
+                <entry key="slave0" value-ref="slaveDataSource"/>
+            </map>
+        </property>
+        <property name="defaultTargetDataSource" ref="masterDataSource"/>
+        <property name="failoverEnabled" value="true"/>
+        <property name="failoverScheduleDelay" value="60"/>
+    </bean>
+    <bean id="masterDataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource" destroy-method="close">
+        <property name="driverClass" value="${jdbc.driverClass}"/>
+        <property name="jdbcUrl" value="${jdbc.jdbcUrl}"/>
+        <property name="user" value="${jdbc.user}"/>
+        <property name="password" value="${jdbc.password}"/>
+        <property name="maxPoolSize" value="${jdbc.maxPoolSize}"/>
+        <property name="minPoolSize" value="${jdbc.minPoolSize}"/>
+        <property name="initialPoolSize" value="${jdbc.initialPoolSize}"/>
+        <property name="acquireIncrement" value="${jdbc.acquireIncrement}"/>
+        <property name="maxIdleTime" value="${jdbc.maxIdleTime}"/>
+        <property name="idleConnectionTestPeriod" value="${jdbc.idleConnectionTestPeriod}"/>
+        <property name="testConnectionOnCheckin" value="${jdbc.testConnectionOnCheckin}" />
+        <property name="preferredTestQuery" value="${jdbc.preferredTestQuery}" />
+    </bean>
+    <bean id="slaveDataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource" destroy-method="close">
+        <property name="driverClass" value="${jdbc.slave.driverClass}"/>
+        <property name="jdbcUrl" value="${jdbc.slave.jdbcUrl}"/>
+        <property name="user" value="${jdbc.slave.user}"/>
+        <property name="password" value="${jdbc.slave.password}"/>
+        <property name="maxPoolSize" value="${jdbc.slave.maxPoolSize}"/>
+        <property name="minPoolSize" value="${jdbc.slave.minPoolSize}"/>
+        <property name="initialPoolSize" value="${jdbc.slave.initialPoolSize}"/>
+        <property name="acquireIncrement" value="${jdbc.slave.acquireIncrement}"/>
+        <property name="maxIdleTime" value="${jdbc.slave.maxIdleTime}"/>
+        <property name="idleConnectionTestPeriod" value="${jdbc.slave.idleConnectionTestPeriod}"/>
+        <property name="testConnectionOnCheckin" value="${jdbc.slave.testConnectionOnCheckin}" />
+        <property name="preferredTestQuery" value="${jdbc.slave.preferredTestQuery}" />
+    </bean>
+
+    <!-- 配置Mybatis的文件 ，mapperLocations配置*_sql.xml文件位置，configLocation配置mybatis-config文件位置-->
+    <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <property name="dataSource" ref="dataSource" />
+        <property name="mapperLocations" value="classpath:mapper/*.xml"/>
+        <property name="configLocation" value="classpath:mybatis/mybatis-config.xml" />
+    </bean>
+
+    <bean id="sqlSession" class="org.mybatis.spring.SqlSessionTemplate" primary="true">
+        <constructor-arg index="0" ref="sqlSessionFactory"/>
+    </bean>
+
+    <!-- datasource 事务-->
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <constructor-arg ref="dataSource"/>
+    </bean>
+
+    <!--事务注解映射的支持 -->
+    <tx:annotation-driven transaction-manager="transactionManager"/>
+
+    <!-- 定时任务注解映射的支持 -->
+    <task:annotation-driven/>
+
+    <!-- ###############################自定义AOP实现start############################### -->
+
+    <!-- 缓存AOP配置 -->
+    <bean id="cacheableAdvice" class="com.ntd.aop.annotation.cache.CacheableInterceptor"/>
+    <bean id="cachePointcut" class="com.ntd.aop.annotation.cache.CacheablePointcut">
+        <property name="filteredClass">
+            <list>
+                <value>com.ntd.service.impl.UserServiceImpl</value>
+            </list>
+        </property>
+    </bean>
+
+    <!-- 主从数据源AOP配置 -->
+    <bean id="datasourceAdvice" class="com.ntd.aop.annotation.db.DBReadWriteInterceptor">
+        <property name="routingDataSource" ref="dataSource"/>
+    </bean>
+    <bean id="datasourcePointcut" class="com.ntd.aop.annotation.db.DBReadWritePointcut">
+    </bean>
+
+    <aop:config proxy-target-class="true">
+        <aop:advisor advice-ref="cacheableAdvice" pointcut-ref="cachePointcut" order="1"/>
+        <aop:advisor advice-ref="datasourceAdvice" pointcut-ref="datasourcePointcut" order="2"/>
+    </aop:config>
+    <!-- ###############################自定义AOP实现end############################### -->
+
+    <!--<import resource="classpath:spring/aopAnnotationContext.xml" />-->
+    <!--<import resource="classpath:spring/aopXMLContext.xml" />-->
+    <import resource="classpath:spring/redisContext.xml" />
+    <import resource="classpath:spring/beansContext.xml" />
+    <!--<import resource="classpath:spring/quartzContext.xml"/>-->
+
+</beans>
